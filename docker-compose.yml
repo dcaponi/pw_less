@@ -1,0 +1,42 @@
+version: "3"
+
+services:
+
+    pw_less:
+        build: .
+        tty: true
+        stdin_open: true
+        volumes:
+            - ./:/go/src/pw_less
+        ports:
+            - "8000:8000"
+        env_file:
+            - .env
+        links:
+            - database
+        depends_on:
+            - database
+            - redis
+
+    database:
+        image: postgres
+        env_file:
+            - .env
+        volumes:
+            - db_data:/var/lib/postgresql/data
+
+    redis:
+        image: redis
+        container_name: redis
+        entrypoint: redis-server --appendonly yes
+        restart: always
+        ports:
+            - "6379:6379"
+        env_file:
+            - .env
+        volumes:
+            - ../data/redis:/data
+
+volumes:
+    db_data:
+    redis:
