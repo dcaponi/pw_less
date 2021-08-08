@@ -1,0 +1,51 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+
+	"github.com/dcaponi/pw_less/cache"
+	"github.com/dcaponi/pw_less/database"
+	"github.com/dcaponi/pw_less/email"
+	"github.com/dcaponi/pw_less/user"
+)
+
+func main() {
+	db, err := database.New(database.DBConfig{
+		Flavor:   os.Getenv("DATABASE_FLAVOR"),
+		Host:     os.Getenv("DATABASE_HOST"),
+		User:     os.Getenv("POSTGRES_USER"),
+		Password: os.Getenv("POSTGRES_PASSWORD"),
+		Port:     os.Getenv("POSTGRES_PORT"),
+		Db:       os.Getenv("POSTGRES_DB"),
+	})
+	if err != nil {
+		log.Fatalln("failed to establish database connection!", err)
+	}
+	defer db.Close()
+
+	cache, err := cache.NewRedisCache(cache.RedisCacheConfig{
+		Addr:     os.Getenv("REDIS_ADDR"),
+		Password: os.Getenv("REDIS_PASSWORD"),
+		DB:       0,
+	})
+	if err != nil {
+		log.Fatalln("failed to establish cache connection!", err)
+	}
+
+	gmailer := email.SimpleEmailer{
+		From:     os.Getenv("EMAIL_FROM"),
+		Password: os.Getenv("EMAIL_PASSWORD"),
+		Host:     os.Getenv("EMAIL_HOST"),
+		Port:     os.Getenv("EMAIL_PORT"),
+	}
+
+	user.NewHandler(user.NewController(user.NewRepo(db), cache, gmailer))
+
+	err = http.ListenAndServe(fmt.Sprintf(":%s", os.Getenv("PORT")), nil)
+	if err != nil {
+		log.Fatalln("unable to start server!", err)
+	}
+}
