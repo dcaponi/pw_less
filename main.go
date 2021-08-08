@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/onelogin/onelogin-go-sdk/pkg/client"
+
 	"github.com/dcaponi/pw_less/cache"
 	"github.com/dcaponi/pw_less/database"
 	"github.com/dcaponi/pw_less/email"
@@ -42,7 +44,17 @@ func main() {
 		Port:     os.Getenv("EMAIL_PORT"),
 	}
 
-	user.NewHandler(user.NewController(user.NewRepo(db), cache, gmailer))
+	oneloginClient, err := client.NewClient(&client.APIClientConfig{
+		Timeout:      client.DefaultTimeout,
+		ClientID:     os.Getenv("ONELOGIN_CLIENT_ID"),
+		ClientSecret: os.Getenv("ONELOGIN_CLIENT_SECRET"),
+		Region:       os.Getenv("ONELOGIN_CLIENT_REGION"),
+	})
+	if err != nil {
+		log.Fatalln("failed to establish onelogin connection!", err)
+	}
+
+	user.NewHandler(user.NewController(user.NewRepo(*oneloginClient), cache, gmailer))
 
 	err = http.ListenAndServe(fmt.Sprintf(":%s", os.Getenv("PORT")), nil)
 	if err != nil {
