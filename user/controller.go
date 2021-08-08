@@ -6,6 +6,8 @@ import (
 	"log"
 	"strings"
 
+	"github.com/onelogin/onelogin-go-sdk/pkg/services/users"
+
 	"github.com/dcaponi/pw_less/cache"
 	"github.com/dcaponi/pw_less/email"
 	"github.com/google/uuid"
@@ -50,29 +52,29 @@ func (c UserController) ValidateUserToken(email, token string) ([]byte, error) {
 }
 
 func (c UserController) CreateUser(a []byte) ([]byte, error) {
-	var u User
+	var u users.User
 
 	if err := json.Unmarshal(a, &u); err != nil {
 		log.Printf("invalid payload %v given\n", u)
 		return []byte("invalid payload given"), ErrUnprocessableInput
 	}
 
-	existingUser, err := c.Repo.GetByEmail(u.Email)
+	existingUser, err := c.Repo.GetByEmail(*u.Email)
 	if err != nil {
 		log.Println("sql error", err)
 	}
 
-	if existingUser.ID != 0 {
+	if existingUser != nil {
 		log.Println("existing user found", existingUser)
-		token, err := c.Cache.Get(existingUser.Email)
+		token, err := c.Cache.Get(*existingUser.Email)
 		if err != nil {
 			token = strings.Replace(uuid.New().String(), "-", "", -1)
-			c.Cache.Set(existingUser.Email, token)
+			c.Cache.Set(*existingUser.Email, token)
 		}
 
-		err = c.Emailer.Send([]string{existingUser.Email}, fmt.Sprintf("http://localhost:8000/users?email=%s&token=%s", existingUser.Email, token))
+		err = c.Emailer.Send([]string{*existingUser.Email}, fmt.Sprintf("http://localhost:8000/users?email=%s&token=%s", *existingUser.Email, token))
 		if err != nil {
-			log.Printf("unable to send email to user %s\n%v\n", u.Email, err)
+			log.Printf("unable to send email to user %s\n%v\n", *u.Email, err)
 		}
 
 		body, err := json.Marshal(existingUser)
@@ -83,7 +85,7 @@ func (c UserController) CreateUser(a []byte) ([]byte, error) {
 		return body, nil
 	}
 
-	err = c.Repo.Create(&u)
+	err = c.Repo.Create(*u.Email)
 	if err != nil {
 		log.Printf("unable to create user %v given\n%v\n", u, err)
 		return []byte("unable to create user"), ErrUnexpectedError
@@ -96,11 +98,11 @@ func (c UserController) CreateUser(a []byte) ([]byte, error) {
 	}
 
 	token := strings.Replace(uuid.New().String(), "-", "", -1)
-	c.Cache.Set(u.Email, token)
+	c.Cache.Set(*u.Email, token)
 
-	err = c.Emailer.Send([]string{u.Email}, fmt.Sprintf("http://localhost:8000/users?email=%s&token=%s", u.Email, token))
+	err = c.Emailer.Send([]string{*u.Email}, fmt.Sprintf("http://localhost:8000/users?email=%s&token=%s", *u.Email, token))
 	if err != nil {
-		log.Printf("unable to send email to user %s\n%v\n", u.Email, err)
+		log.Printf("unable to send email to user %s\n%v\n", *u.Email, err)
 	}
 
 	return body, nil
