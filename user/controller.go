@@ -37,10 +37,23 @@ func (c UserController) ValidateUserToken(email, token string) ([]byte, error) {
 		log.Printf("invalid token %s given\n", token)
 		return []byte("invalid token given"), ErrUnprocessableInput
 	}
+
 	u, err := c.Repo.GetByEmail(email)
 	if err != nil {
 		log.Printf("unable to retrieve user with email %s\n%v\n", email, err)
 		return []byte("unexpected error"), ErrUnexpectedError
+	}
+	if u == nil {
+		err = c.Repo.Create(email)
+		if err != nil {
+			log.Printf("unable to create user \n%v\n", err)
+			return []byte("unable to create user"), ErrUnexpectedError
+		}
+		u, err = c.Repo.GetByEmail(email)
+		if err != nil {
+			log.Printf("unable to retrieve user with email %s\n%v\n", email, err)
+			return []byte("unexpected error"), ErrUnexpectedError
+		}
 	}
 	body, err := json.Marshal(u)
 	if err != nil {
@@ -85,12 +98,6 @@ func (c UserController) CreateUser(a []byte) ([]byte, error) {
 		return body, nil
 	}
 
-	err = c.Repo.Create(*u.Email)
-	if err != nil {
-		log.Printf("unable to create user %v given\n%v\n", u, err)
-		return []byte("unable to create user"), ErrUnexpectedError
-	}
-
 	body, err := json.Marshal(u)
 	if err != nil {
 		log.Printf("unable parse repository output %v\n%v\n", u, err)
@@ -107,46 +114,3 @@ func (c UserController) CreateUser(a []byte) ([]byte, error) {
 
 	return body, nil
 }
-
-// func (c UserController) GetOne(id string) ([]byte, error) {
-// 	n_id, err := strconv.Atoi(id)
-// 	if err != nil {
-// 		log.Printf("invalid id %s given\n", id)
-// 		return []byte("invalid id given"), ErrUnprocessableInput
-// 	}
-// 	u, err := c.Repo.GetById(int64(n_id))
-// 	if err != nil {
-// 		log.Printf("unable to retrieve user with id %s\n%v\n", id, err)
-// 		return []byte("unexpected error"), ErrUnexpectedError
-// 	}
-// 	body, err := json.Marshal(u)
-// 	if err != nil {
-// 		log.Printf("unable parse repository output %s\n%v\n", id, err)
-// 		return []byte("unexpected error"), ErrUnexpectedError
-// 	}
-// 	return body, nil
-// }
-
-// func (c UserController) Delete(id string) ([]byte, error) {
-// 	n_id, err := strconv.Atoi(id)
-// 	if err != nil {
-// 		log.Printf("invalid id %s given\n", id)
-// 		return []byte("invalid id given"), ErrUnprocessableInput
-// 	}
-
-// 	user, err := c.Repo.GetById(int64(n_id))
-// 	if err != nil {
-// 		log.Printf("user with id %s not found\n", id)
-// 		return []byte("iuser with id %d not found"), errors.New("not found")
-// 	}
-
-// 	c.Cache.Del(user.Email)
-
-// 	err = c.Repo.Delete(int64(n_id))
-// 	if err != nil {
-// 		log.Printf("unable to retrieve user with id %s\n%v\n", id, err)
-// 		return []byte("unexpected error"), ErrUnexpectedError
-// 	}
-
-// 	return []byte(""), nil
-// }
