@@ -9,25 +9,11 @@ import (
 	"github.com/onelogin/onelogin-go-sdk/pkg/client"
 
 	"github.com/dcaponi/pw_less/cache"
-	"github.com/dcaponi/pw_less/database"
 	"github.com/dcaponi/pw_less/email"
 	"github.com/dcaponi/pw_less/user"
 )
 
 func main() {
-	db, err := database.New(database.DBConfig{
-		Flavor:   os.Getenv("DATABASE_FLAVOR"),
-		Host:     os.Getenv("DATABASE_HOST"),
-		User:     os.Getenv("POSTGRES_USER"),
-		Password: os.Getenv("POSTGRES_PASSWORD"),
-		Port:     os.Getenv("POSTGRES_PORT"),
-		Db:       os.Getenv("POSTGRES_DB"),
-	})
-	if err != nil {
-		log.Fatalln("failed to establish database connection!", err)
-	}
-	defer db.Close()
-
 	cache, err := cache.NewRedisCache(cache.RedisCacheConfig{
 		Addr:     os.Getenv("REDIS_ADDR"),
 		Password: os.Getenv("REDIS_PASSWORD"),
